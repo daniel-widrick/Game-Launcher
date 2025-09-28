@@ -27,6 +27,9 @@ class GameLauncherNavigation {
         // Add keyboard event listeners
         document.addEventListener('keydown', (e) => this.handleKeyPress(e));
         
+        // Add gamepad support
+        this.setupGamepadSupport();
+        
         // Add mouse support (clicking should update navigation state)
         this.setupMouseSupport();
         
@@ -77,7 +80,7 @@ class GameLauncherNavigation {
                     // Move to previous category
                     this.currentCategoryIndex--;
                     this.enterGameList(); // Auto-open the new category
-                    this.focusCategory(this.currentCategoryIndex); // Update category focus
+                    this.focusCategory(this.currentCategoryIndex, false); // Update category focus (no scroll)
                     // Focus the last game in the bottom row of the new category
                     const newGames = this.getCurrentGames();
                     if (newGames.length > 0) {
@@ -85,7 +88,14 @@ class GameLauncherNavigation {
                         const lastRowStartIndex = Math.floor((newGames.length - 1) / gamesPerRowNew) * gamesPerRowNew;
                         const targetCol = Math.min(this.currentGameIndex % gamesPerRow, (newGames.length - 1) % gamesPerRowNew);
                         this.currentGameIndex = Math.min(lastRowStartIndex + targetCol, newGames.length - 1);
-                        this.focusGame(this.currentGameIndex);
+                        this.focusGameWithoutScroll(this.currentGameIndex); // Focus without scroll
+                        // Do single scroll to the target game after all DOM updates
+                        setTimeout(() => {
+                            const targetGame = this.getCurrentGames()[this.currentGameIndex];
+                            if (targetGame) {
+                                this.scrollToCenter(targetGame);
+                            }
+                        }, 400);
                     }
                 } else {
                     // At the first category - stay in current position, don't exit
@@ -96,8 +106,8 @@ class GameLauncherNavigation {
             // Navigate between categories
             if (this.currentCategoryIndex > 0) {
                 this.currentCategoryIndex--;
-                this.focusCategory(this.currentCategoryIndex);
                 this.showCategory(this.categories[this.currentCategoryIndex]);
+                this.focusCategory(this.currentCategoryIndex);
             }
         }
     }
@@ -118,14 +128,21 @@ class GameLauncherNavigation {
                     // Move to next category
                     this.currentCategoryIndex++;
                     this.enterGameList(); // Auto-open the new category
-                    this.focusCategory(this.currentCategoryIndex); // Update category focus
+                    this.focusCategory(this.currentCategoryIndex, false); // Update category focus (no scroll)
                     // Focus the first game in the top row of the new category
                     const newGames = this.getCurrentGames();
                     if (newGames.length > 0) {
                         const gamesPerRowNew = this.calculateGamesPerRow(newGames);
                         const targetCol = Math.min(this.currentGameIndex % gamesPerRow, (newGames.length - 1) % gamesPerRowNew);
                         this.currentGameIndex = Math.min(targetCol, newGames.length - 1);
-                        this.focusGame(this.currentGameIndex);
+                        this.focusGameWithoutScroll(this.currentGameIndex); // Focus without scroll
+                        // Do single scroll to the target game after all DOM updates
+                        setTimeout(() => {
+                            const targetGame = this.getCurrentGames()[this.currentGameIndex];
+                            if (targetGame) {
+                                this.scrollToCenter(targetGame);
+                            }
+                        }, 400);
                     }
                 } else {
                     // At the last category - stay in current position, don't exit
@@ -138,8 +155,8 @@ class GameLauncherNavigation {
             this.hideCategory();
             if (this.currentCategoryIndex < this.categories.length - 1) {
                 this.currentCategoryIndex++;
-                this.focusCategory(this.currentCategoryIndex);
                 this.showCategory(this.categories[this.currentCategoryIndex]);
+                this.focusCategory(this.currentCategoryIndex);
             }
         }
     }
@@ -221,7 +238,7 @@ class GameLauncherNavigation {
         this.categories.forEach(cat => cat.classList.remove('nav-active'));
     }
 
-    focusCategory(index) {
+    focusCategory(index, shouldScroll = true) {
         // Remove focus from all categories and games
         this.clearAllFocus();
         
@@ -231,12 +248,20 @@ class GameLauncherNavigation {
             const title = category.querySelector('.game-index-title');
             if (title) {
                 title.classList.add('nav-focused');
-                title.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Only scroll if requested (avoid competing scrolls during category transitions)
+                if (shouldScroll) {
+                    // Scroll to the first game in this category for better visual reference
+                    const games = Array.from(category.querySelectorAll('.game-item'));
+                    if (games.length > 0) {
+                        setTimeout(() => {
+                            this.scrollToCenter(games[0]);
+                        }, 400);
+                    }
+                }
             }
         }
-    }
-
-    focusGame(index) {
+    }    focusGame(index) {
         const games = this.getCurrentGames();
         
         // Remove focus from all games
@@ -245,8 +270,79 @@ class GameLauncherNavigation {
         // Focus the current game
         if (games[index]) {
             games[index].classList.add('nav-focused');
-            games[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Delay scrolling to ensure DOM updates are complete
+            setTimeout(() => {
+                this.scrollToCenter(games[index]);
+            }, 400);
         }
+    }
+
+    focusGameWithoutScroll(index) {
+        const games = this.getCurrentGames();
+        
+        // Remove focus from all games
+        games.forEach(game => game.classList.remove('nav-focused'));
+        
+        // Focus the current game without scrolling
+        if (games[index]) {
+            games[index].classList.add('nav-focused');
+        }
+    }
+
+    scrollToCenter(element) {
+        if (!element) return;
+        // If this is a game-item, ensure its parent .game-list is fully expanded for measurement
+        const gameList = element.closest('.game-list');
+        let restore = null;
+        if (gameList && (!gameList.classList.contains('scroll-measure'))) {
+            // Save original styles
+            restore = {
+                maxHeight: gameList.style.maxHeight,
+                opacity: gameList.style.opacity,
+                visibility: gameList.style.visibility,
+                transition: gameList.style.transition
+            };
+            // Force expanded state for measurement
+            gameList.style.maxHeight = '2000px';
+            gameList.style.opacity = '1';
+            gameList.style.visibility = 'visible';
+            gameList.style.transition = 'none';
+            gameList.classList.add('scroll-measure');
+            // Force reflow
+            gameList.offsetHeight;
+        }
+
+        // Now measure
+        const rect = element.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const header = document.querySelector('.main-header');
+        const headerHeight = header ? header.getBoundingClientRect().height : 0;
+        const availableViewportHeight = viewportHeight - headerHeight;
+        const availableViewportCenter = headerHeight + (availableViewportHeight / 2);
+        const elementCenter = rect.top + rect.height / 2;
+        const scrollOffset = elementCenter - availableViewportCenter;
+        const currentScroll = window.pageYOffset;
+        const targetScroll = currentScroll + scrollOffset;
+        const padding = 20;
+        const finalTarget = Math.max(padding, targetScroll);
+
+        // Restore styles if we changed them
+        if (gameList && restore) {
+            gameList.style.maxHeight = restore.maxHeight;
+            gameList.style.opacity = restore.opacity;
+            gameList.style.visibility = restore.visibility;
+            gameList.style.transition = restore.transition;
+            gameList.classList.remove('scroll-measure');
+        }
+
+        // Debug logging
+        // console.log('Scrolling to center (predicted):', { ... });
+
+        // Smooth scroll to center the element
+        window.scrollTo({
+            top: finalTarget,
+            behavior: 'smooth'
+        });
     }
 
     getCurrentGames() {
@@ -312,6 +408,172 @@ class GameLauncherNavigation {
         
         // You can add your game launching logic here
         // For example: window.electronAPI.launchGame(gameElement.textContent);
+    }
+
+    // Gamepad Support
+    setupGamepadSupport() {
+        this.gamepadIndex = -1;
+        this.gamepadLastInput = 0;
+        this.gamepadInputDelay = 150; // Initial delay for all inputs
+        
+        // Enhanced input tracking for smooth acceleration
+        this.gamepadInputState = {
+            up: { pressed: false, firstPress: 0, lastAction: 0 },
+            down: { pressed: false, firstPress: 0, lastAction: 0 },
+            left: { pressed: false, firstPress: 0, lastAction: 0 },
+            right: { pressed: false, firstPress: 0, lastAction: 0 }
+        };
+        
+        // Timing configuration
+        this.gamepadTiming = {
+            initialDelay: 300,      // First repeat delay (ms)
+            fastRepeatDelay: 120,   // Fast repeat delay after acceleration (ms)
+            accelerationTime: 800   // Time to reach max speed (ms)
+        };
+        
+        // Check for gamepad connection
+        window.addEventListener('gamepadconnected', (e) => {
+            console.log('Gamepad connected:', e.gamepad.id);
+            this.gamepadIndex = e.gamepad.index;
+            this.startGamepadPolling();
+        });
+        
+        window.addEventListener('gamepaddisconnected', (e) => {
+            console.log('Gamepad disconnected');
+            this.gamepadIndex = -1;
+            this.stopGamepadPolling();
+        });
+        
+        // Check for already connected gamepads
+        const gamepads = navigator.getGamepads();
+        for (let i = 0; i < gamepads.length; i++) {
+            if (gamepads[i]) {
+                console.log('Found existing gamepad:', gamepads[i].id);
+                this.gamepadIndex = i;
+                this.startGamepadPolling();
+                break;
+            }
+        }
+    }
+    
+    startGamepadPolling() {
+        if (this.gamepadPolling) return;
+        
+        this.gamepadPolling = true;
+        const poll = () => {
+            if (!this.gamepadPolling) return;
+            
+            this.pollGamepad();
+            requestAnimationFrame(poll);
+        };
+        requestAnimationFrame(poll);
+    }
+    
+    stopGamepadPolling() {
+        this.gamepadPolling = false;
+    }
+    
+    pollGamepad() {
+        const now = Date.now();
+        const gamepads = navigator.getGamepads();
+        const gamepad = gamepads[this.gamepadIndex];
+        
+        if (!gamepad) return;
+        
+        // D-pad or left stick navigation
+        const leftStickX = gamepad.axes[0];
+        const leftStickY = gamepad.axes[1];
+        const dpadUp = gamepad.buttons[12].pressed;
+        const dpadDown = gamepad.buttons[13].pressed;
+        const dpadLeft = gamepad.buttons[14].pressed;
+        const dpadRight = gamepad.buttons[15].pressed;
+        
+        // Action buttons
+        const buttonA = gamepad.buttons[0].pressed;
+        const buttonB = gamepad.buttons[1].pressed;
+        const buttonX = gamepad.buttons[2].pressed;
+        const buttonY = gamepad.buttons[3].pressed;
+        
+        // Current input states
+        const currentInputs = {
+            up: dpadUp || leftStickY < -0.5,
+            down: dpadDown || leftStickY > 0.5,
+            left: dpadLeft || leftStickX < -0.5,
+            right: dpadRight || leftStickX > 0.5
+        };
+        
+        // Handle directional inputs with acceleration
+        for (const [direction, isPressed] of Object.entries(currentInputs)) {
+            const inputState = this.gamepadInputState[direction];
+            
+            if (isPressed) {
+                if (!inputState.pressed) {
+                    // First press - immediate action
+                    inputState.pressed = true;
+                    inputState.firstPress = now;
+                    inputState.lastAction = now;
+                    this.executeDirectionalInput(direction);
+                } else {
+                    // Held input - check for repeat with acceleration
+                    const holdTime = now - inputState.firstPress;
+                    const timeSinceLastAction = now - inputState.lastAction;
+                    
+                    // Calculate current repeat delay based on hold time
+                    let currentDelay;
+                    if (holdTime < this.gamepadTiming.initialDelay) {
+                        // Still in initial delay period
+                        currentDelay = this.gamepadTiming.initialDelay;
+                    } else {
+                        // Calculate smooth acceleration
+                        const accelerationProgress = Math.min(
+                            (holdTime - this.gamepadTiming.initialDelay) / this.gamepadTiming.accelerationTime,
+                            1
+                        );
+                        
+                        // Smooth curve for acceleration (ease-in)
+                        const curve = accelerationProgress * accelerationProgress;
+                        currentDelay = this.gamepadTiming.initialDelay * (1 - curve) + 
+                                     this.gamepadTiming.fastRepeatDelay * curve;
+                    }
+                    
+                    if (timeSinceLastAction >= currentDelay) {
+                        inputState.lastAction = now;
+                        this.executeDirectionalInput(direction);
+                    }
+                }
+            } else {
+                // Input released
+                inputState.pressed = false;
+            }
+        }
+        
+        // Handle action buttons (simple debouncing)
+        if ((buttonA || buttonX) && (now - this.gamepadLastInput > this.gamepadInputDelay)) {
+            this.selectCurrent();
+            this.gamepadLastInput = now;
+        } else if ((buttonB || buttonY) && (now - this.gamepadLastInput > this.gamepadInputDelay)) {
+            if (this.isInGameList) {
+                this.exitGameList();
+            }
+            this.gamepadLastInput = now;
+        }
+    }
+    
+    executeDirectionalInput(direction) {
+        switch (direction) {
+            case 'up':
+                this.navigateUp();
+                break;
+            case 'down':
+                this.navigateDown();
+                break;
+            case 'left':
+                this.navigateLeft();
+                break;
+            case 'right':
+                this.navigateRight();
+                break;
+        }
     }
 }
 

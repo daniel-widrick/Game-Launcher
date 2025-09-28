@@ -295,12 +295,21 @@ body::before {
     margin-left: 20px;
     margin-top: 25px;
     padding-top: 10px;
+    padding-bottom: 20px;
     opacity: 0;
     visibility: hidden;
     transform: translateY(20px);
     transition: all 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
     max-height: 0;
     overflow: hidden;
+}
+
+/* Navigation active state - force show game list with generous height */
+.game-index-row.nav-active .game-list {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(0) !important;
+    max-height: 2000px !important;
 }
 
 /* Remove hover-based game list display - controlled by navigation now */
