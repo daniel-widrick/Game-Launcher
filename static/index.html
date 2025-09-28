@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-    <script src="script.js"></script>
+    <link rel="stylesheet" href="static/style.css">
+    <script src="static/script.js"></script>
 </head>
 <body>
     <header class="main-header">
@@ -17,70 +17,22 @@
     </header>
    
 <div class="game-body">
+{{range .Categories}}
     <div class="game-index-row">
-        <div class="game-index-title">✨</div>
+        <div class="game-index-title">{{.Icon}}</div>
         <div class="game-list">
-            <div class="game-item">Game 16</div>
-            <div class="game-item">Game 17</div>
-            <div class="game-item">Game 18</div>
-            <div class="game-item">Game 19</div>
-            <div class="game-item">Game 20</div>
-            <div class="game-item">Game 21</div>
-            <div class="game-item">Game 22</div>
-            <div class="game-item">Game 23</div>
-            <div class="game-item">Game 24</div>
-            <div class="game-item">Game 25</div>
+            {{$categoryName := .Name}}
+            {{range $.Games}}
+            {{if eq .Category $categoryName}}
+            <div class="game-item" data-launch-id="{{.LaunchID}}" style="background-image: url('{{.BoxArt}}');">
+                <div class="platformIcon-{{.Platform}}"> </div>
+                {{.Title}}
+            </div>
+            {{end}}
+            {{end}}
         </div>
     </div>
-    <div class="game-index-row">
-        <div class="game-index-title">A</div>
-        <div class="game-list">
-            <div class="game-item">Game 1</div>
-            <div class="game-item">Game 2</div>
-            <div class="game-item">Game 3</div>
-        </div>
-    </div>
-    <div class="game-index-row">
-        <div class="game-index-title">B</div>
-        <div class="game-list">
-            <div class="game-item">Game 4</div>
-            <div class="game-item">Game 5</div>
-            <div class="game-item">Game 6</div>
-            <div class="game-item">Game 7</div>
-            <div class="game-item">Game 8</div>
-            <div class="game-item">Game 9</div>
-            <div class="game-item">Game 10</div>
-            <div class="game-item">Game 11</div>
-            <div class="game-item">Game 12</div>
-            <div class="game-item">Game 13</div>
-            <div class="game-item">Game 14</div>
-            <div class="game-item">Game 15</div>
-        </div>
-    </div>
-    <div class="game-index-row">
-        <div class="game-index-title">C</div>
-        <div class="game-list">
-            <div class="game-item">Game 1</div>
-            <div class="game-item">Game 2</div>
-            <div class="game-item">Game 3</div>
-        </div>
-    </div>
-    <div class="game-index-row">
-        <div class="game-index-title">D</div>
-        <div class="game-list">
-            <div class="game-item">Game 1</div>
-            <div class="game-item">Game 2</div>
-            <div class="game-item">Game 3</div>
-        </div>
-    </div>
-    <div class="game-index-row">
-        <div class="game-index-title">E</div>
-        <div class="game-list">
-            <div class="game-item">Game 1</div>
-            <div class="game-item">Game 2</div>
-            <div class="game-item">Game 3</div>
-        </div>
-    </div>
+{{end}}
 </div>
 </body>
 </html>

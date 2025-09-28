@@ -1,0 +1,20 @@
+[
+    {
+        "BoxArt": "/unknown.svg",
+        "Platform": "/unknown.svg",
+        "Title": "DE-Frag",
+        "exec": "dfrgui.exe"
+    },
+    {
+        "BoxArt": "/unknown.svg",
+        "Platform": "/unknown.svg",
+        "Title": "Calc",
+        "exec": "calc.exe"
+    },
+    {
+        "BoxArt": "/unknown.svg",
+        "Platform": "Win32",
+        "Title": "Choice",
+        "exec": "choice.exe"
+    }
+]

@@ -400,14 +400,44 @@ class GameLauncherNavigation {
     }
 
     triggerGameSelect(gameElement) {
+        console.log('triggerGameSelect called with:', gameElement);
+        
         // Add a visual feedback for selection
         gameElement.classList.add('game-selected');
         setTimeout(() => {
             gameElement.classList.remove('game-selected');
         }, 300);
         
-        // You can add your game launching logic here
-        // For example: window.electronAPI.launchGame(gameElement.textContent);
+        // Get the LaunchID from the data attribute
+        const launchID = gameElement.dataset.launchId;
+        console.log('LaunchID extracted:', launchID);
+        console.log('Dataset:', gameElement.dataset);
+        
+        if (launchID) {
+            console.log('Sending fetch request to:', `/launch/${launchID}`);
+            // Send request to launch endpoint
+            fetch(`/launch/${launchID}`, {
+                method: 'GET'
+            })
+            .then(response => {
+                console.log('Fetch response received:', response);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Launch request successful:', data);
+                // You could add additional UI feedback here
+            })
+            .catch(error => {
+                console.error('Launch request failed:', error);
+                // You could add error handling UI here
+            });
+        } else {
+            console.error('No LaunchID found for game element');
+            console.error('Element HTML:', gameElement.outerHTML);
+        }
     }
 
     // Gamepad Support
